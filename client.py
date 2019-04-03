@@ -6,7 +6,7 @@ import json
 import uuid
 
 name = "公司笔记本"
-server = ('改为服务器IP', 9999)
+server = ('118.25.44.238', 9999)
 buffer_size = 32 * 1024
 socket_timeout = 1024
 resend = {"type": "resend"}
@@ -15,6 +15,7 @@ handshake = {"type": "handshake", "name": "", "id": ""}
 # 客户端获取指定客户ip地址
 connect = {"type": "connect", "id": ""}
 request_connect = {"type": "client", "name": ""}
+client_msg = {"type": "msg","name":name, "msg": "连接成功"}
 
 
 class MouseClient(threading.Thread):
@@ -27,6 +28,7 @@ class MouseClient(threading.Thread):
         self.client_addr = None
         self.id = None
         self.name = name
+        client_msg["name"] = self.name
 
     def run(self):
         self.flag = True
@@ -77,7 +79,7 @@ class MouseClient(threading.Thread):
         if type == "connect":
             client = result["data"]
             # 尝试连接
-            self.connect_client((client["address"], client["port"]),True)
+            self.connect_client((client["address"], client["port"]))
         elif type == "handshake":
             if result["status"]:
                 print("\n连接服务器成功")
@@ -99,9 +101,9 @@ class MouseClient(threading.Thread):
                 if self.try_connect:
                     if self.client_addr:
                         time.sleep(2)
-                        temp = {"type": "msg","name":self.name, "msg": "连接成功"}
-                        self.sendto(json.dumps(temp), self.client_addr)
-
+                        temp_msg = client_msg
+                        temp_msg["msg"] = "Connection Succeeded"
+                        self.sendto(json.dumps(temp_msg), self.client_addr)
                 self.try_connect = False
             except:
                 print("连接失败")
@@ -112,7 +114,7 @@ class MouseClient(threading.Thread):
                 print('\n%s：%s' % (result["name"],msg))
             except:
                 pass
-    def connect_client(self, addr,main=False):
+    def connect_client(self, addr):
         print("尝试连接 %s:%s" % addr)
         self.client_addr = addr
         temp_request_connect = request_connect
@@ -138,5 +140,6 @@ if __name__ == '__main__':
         pass
     while True:
         msg = input("")
-        temp = {"type": "msg", "name": name, "msg": msg}
-        ser.sendto(json.dumps(temp), ser.client_addr)
+        temp_msg = client_msg
+        temp_msg["msg"] = msg
+        ser.sendto(json.dumps(temp_msg), ser.client_addr)
