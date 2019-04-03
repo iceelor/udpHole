@@ -4,8 +4,9 @@ import time
 import threading
 import json
 import uuid
+
 name = "公司笔记本"
-server = ('改为服务器IP', 9999)
+server = ('118.25.44.238', 9999)
 buffer_size = 32 * 1024
 socket_timeout = 1024
 resend = {"type": "resend"}
@@ -13,7 +14,8 @@ resend = {"type": "resend"}
 handshake = {"type": "handshake", "name": "", "id": ""}
 # 客户端获取指定客户ip地址
 connect = {"type": "connect", "id": ""}
-request_connect = {"type":"client","name":""}
+request_connect = {"type": "client", "name": ""}
+
 
 class MouseClient(threading.Thread):
     def __init__(self):
@@ -23,9 +25,12 @@ class MouseClient(threading.Thread):
         self.last_msg = None
         self.try_connect = True
         self.client_addr = None
+        self.id = None
+        self.name = name
 
     def run(self):
         self.flag = True
+        data =None
         while self.flag:
             try:
                 data = self.s.recv(buffer_size)
@@ -33,19 +38,22 @@ class MouseClient(threading.Thread):
                 result = json.loads(data)
                 self.data_analysis(result)
             except:
+                print("收到数据，出现错误",data)
                 # 出错原因可能是丢包，发送重发命令
                 # self.s.send(bytes(json.dumps(resend)))
                 pass
-            time.sleep(1)
+            time.sleep(3)
+
     def handshake(self):
         self.try_connect = True
         # 握手
         temp_handshake = handshake
-        temp_handshake["name"]=name
-        temp_handshake["id"]=str(uuid.uuid1()).replace('-','')
-        print("本机ID：%s" % temp_handshake["id"])
-        self.sendto(json.dumps(temp_handshake),server)
-    def connect(self,id):
+        temp_handshake["name"] = name
+        temp_handshake["id"] = str(uuid.uuid1()).replace('-', '')
+        self.id = temp_handshake["id"]
+        self.sendto(json.dumps(temp_handshake), server)
+
+    def connect(self, id):
         # 根据id申请连接
         temp_connect = connect
         temp_connect["id"] = id
@@ -63,12 +71,13 @@ class MouseClient(threading.Thread):
             return True
         except:
             return False
+
     def data_analysis(self, result):
         type = result["type"]
         if type == "connect":
             client = result["data"]
             # 尝试连接
-            self.connect_client((client["address"], client["port"]))
+            self.connect_client((client["address"], client["port"]),True)
         elif type == "handshake":
             if result["status"]:
                 print("\n连接服务器成功")
@@ -81,50 +90,37 @@ class MouseClient(threading.Thread):
                 # 收到客户端请求连接
                 id = result["id"]
                 name = result["name"]
-                select = input("收到来自 %s（%s） 的连接请求,是否接受连接(Y/N)：" % (name,id))
-                if select.lower() == "y":
-                    time.sleep(1)
-                    self.connect_client((result["address"],result["port"]))
-                    pass
-                elif select.lower() == "n":
-                    print("已拒绝")
-                    pass
-                else:
-                    print("命令错误，取消本次请求")
+                print("收到来自 %s（%s） 的连接请求" % (name, id))
+                self.connect_client((result["address"], result["port"]))
             except:
-                # self.sendto(last_msg=True)
                 pass
-        elif type=="client":
+        elif type == "client":
             try:
                 if self.try_connect:
-                    print("连接 %s 成功" % result["name"])
                     if self.client_addr:
                         time.sleep(2)
-                        temp = {"type":"msg","msg":"test"}
-                        self.sendto(json.dumps(temp),self.client_addr)
+                        temp = {"type": "msg","name":self.name, "msg": "连接成功"}
+                        self.sendto(json.dumps(temp), self.client_addr)
 
                 self.try_connect = False
             except:
                 print("连接失败")
-        elif type =="msg":
+        elif type == "msg":
             try:
-                print('\n收到消息：%s' % result["msg"])
-                msg = input("回复：")
-                temp = {"type": "msg", "msg": msg}
-                self.sendto(json.dumps(temp), self.client_addr)
+                msg = result["msg"]
+                if msg=='1':return
+                print('\n%s：%s' % (result["name"],msg))
             except:
                 pass
-    def connect_client(self,addr):
-        # for i in range(10):
+    def connect_client(self, addr,main=False):
         print("尝试连接 %s:%s" % addr)
         self.client_addr = addr
-        # if not self.try_connect:
-        #     break
         temp_request_connect = request_connect
         temp_request_connect["name"] = name
-        self.s.connect(addr)
-        self.sendto(json.dumps(temp_request_connect),addr)
-        time.sleep(3)
+        self.sendto(json.dumps(temp_request_connect), addr)
+
+
+
 if __name__ == '__main__':
     name = input("请输入名字：")
     ser = MouseClient()
@@ -136,6 +132,11 @@ if __name__ == '__main__':
         id = input("1.请输入对方id：")
         ser.connect(id)
     else:
+        # 创建tcp服务器
+        print("本机ID：%s" % ser.id)
         print("请将id告知对方...")
         pass
-
+    while True:
+        msg = input("")
+        temp = {"type": "msg", "name": name, "msg": msg}
+        ser.sendto(json.dumps(temp), ser.client_addr)

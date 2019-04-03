@@ -7,8 +7,6 @@ import json
 buffer_size = 32 * 1024
 bind_address = ('0.0.0.0', 9999)
 socket_timeout = 1024
-# 重发
-resend = {"type": "resend"}
 # 响应握手成功
 handshake = {"type": "handshake", "status": True}
 # 服务端返回id信息
@@ -41,9 +39,6 @@ class MouseServer(threading.Thread):
                 result["port"] = int(addr[1])
                 self.data_analysis(result)
             except:
-                # 解析错误，指示重发
-                if not addr:
-                    self.sendto(json.dumps(resend), addr)
                 pass
             finally:
                 time.sleep(1)
@@ -104,7 +99,7 @@ class MouseServer(threading.Thread):
                         temp_connect["data"] = exist
                         self.sendto(json.dumps(temp_connect),addr)
                 except:
-                    self.sendto(json.dumps(resend), addr)
+                    pass
             elif type == "resend":
                 self.sendto(last_msg=True)
             # 清除超时的客户端
