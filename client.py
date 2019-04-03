@@ -6,7 +6,7 @@ import json
 import uuid
 
 name = "公司笔记本"
-server = ('118.25.44.238', 9999)
+server = ('改为服务器IP', 9999)
 buffer_size = 32 * 1024
 socket_timeout = 1024
 resend = {"type": "resend"}
