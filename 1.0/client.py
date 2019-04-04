@@ -4,6 +4,10 @@ import time
 import json
 import threading
 
+
+# 对方id
+client_id = "fcbc5c6655ee11e9af3cc85b76997f31"
+
 id = "fcbc5c6655ee11e9af3cc85b76997f30"
 local_port = 3389
 
@@ -19,11 +23,12 @@ local_s.settimeout(socket_timeout)
 local_s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 local_s.bind(('127.0.0.1', local_port))
 
-# 客户端列表，(addr,port)
-client = None
-client_id = None
-connect_server = False
-
+# 是否已连接服务器
+server_flag = False
+# 客户端是否连接成功
+client_flag = False
+# 客户端地址
+client_addr = None
 
 class Forward(threading.Thread):
     def __init__(self):
@@ -66,21 +71,24 @@ class Read(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        global s, client, client_id, connect_server
+        global s, client, client_id, server_flag,client_flag,client_addr,id
         while True:
             # 接受到的数据，通常为json格式
-            buffer = s.recv(buffer_size)
+            buffer,address = s.recvfrom(buffer_size)
+            print(buffer,address)
             if b'1' == buffer: break
             if not client_id:
                 try:
                     buffer_str = str(buffer, encoding="utf-8")
                     data = json.loads(buffer_str)
                     if "c" in data:
+                        # if data["id"] != id:
+                        #     # 请求连接的结果
+
                         addr = data["c"]
                         client = (addr[0], addr[1])
                         # 有人请求连接
                         result = {"cc": ""}
-                        client_id = data["id"]
                         WriteJSON(result, client)
                         # s.sendto(bytes(json.dumps(result), encoding="utf-8"), client)
                     elif "cc" in data:
@@ -95,8 +103,28 @@ class Read(threading.Thread):
                 pass
             time.sleep(0.5)
 
+class ConnectClient(threading.Thread):
+    """
+        用于连接客户端
+    """
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        global s,client_ide
+        while True:
+            # 循环发送心跳包
+            result = {}
+            WriteJSON(result,)
 
 def WriteJSON(js, addr):
+    """
+        向服务器发送json
+    :param js:
+    :param addr:
+    :return:
+    """
     s.sendto(bytes(json.dumps(js), encoding="utf-8"), addr)
 
 
@@ -108,4 +136,5 @@ if __name__ == "__main__":
     # 启动心跳
     hb = Heartbeat()
     hb.start()
+
     pass
